@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  api-gateway:
+    image: nginx:latest
+    container_name: api-gateway
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx:/etc/nginx
+    depends_on:
+      - auth-service
+      - product-service
+      - inventory-service
+      - inbound-outbound-service
+
+  auth-service:
+    container_name: auth-service
+    image: node:18
+
+  product-service:
+    container_name: product-service
+    image: node:18
+
+  inventory-service:
+    container_name: inventory-service
+    image: node:18
+
+  inbound-outbound-service:
+    container_name: inbound-outbound-service
+    image: node:18
