@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: warehouse-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: warehouse
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - warehouse-network
+
+  inventory-service:
+    build: .
+    container_name: inventory-service
+    environment:
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: warehouse
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    networks:
+      - warehouse-network
+
+volumes:
+  postgres-data:
+
+networks:
+  warehouse-network:
+    driver: bridge
