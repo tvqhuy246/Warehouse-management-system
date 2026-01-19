@@ -1,10 +1,13 @@
 const request = require('supertest');
 
 jest.mock('../services/inventory.service', () => ({
-  getInventoryList: jest.fn().mockResolvedValue([
-    { id: 1, code: 'P001', name: 'Product 1', stock: 10, total_in: 15, total_out: 5 },
-  ]),
-  getProductStock: jest.fn().mockResolvedValue({ id: 1, code: 'P001', name: 'Product 1', stock: 10 }),
+  getInventoryList: jest.fn().mockResolvedValue({
+    items: [
+      { product_id: 1, sku: 'P001', name: 'Product 1', stock: 10, total_in: 15, total_out: 5 },
+    ],
+    pagination: { total: 1, page: 1, limit: 20, total_pages: 1 },
+  }),
+  getProductStock: jest.fn().mockResolvedValue({ product_id: 1, sku: 'P001', name: 'Product 1', stock: 10 }),
 }));
 
 jest.mock('../services/report.service', () => ({
@@ -29,7 +32,7 @@ describe('Inventory routes', () => {
   it('returns inventory list', async () => {
     const res = await request(app).get('/inventory/products');
     expect(res.status).toBe(200);
-    expect(inventoryService.getInventoryList).toHaveBeenCalledWith({ search: undefined });
+    expect(inventoryService.getInventoryList).toHaveBeenCalledWith({ search: undefined, page: 1, limit: 20 });
     expect(res.body.data).toHaveLength(1);
   });
 

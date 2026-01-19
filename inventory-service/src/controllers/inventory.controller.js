@@ -2,9 +2,9 @@ const inventoryService = require('../services/inventory.service');
 
 const listInventory = async (req, res, next) => {
   try {
-    const { search } = req.query;
-    const data = await inventoryService.getInventoryList({ search });
-    res.json({ data });
+    const { search, page = 1, limit = 20 } = req.query;
+    const result = await inventoryService.getInventoryList({ search, page: Number(page), limit: Number(limit) });
+    res.json({ data: result.items, pagination: result.pagination });
   } catch (err) {
     next(err);
   }

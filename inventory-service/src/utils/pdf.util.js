@@ -12,19 +12,19 @@ const buildInventoryPdf = (products = []) => new Promise((resolve, reject) => {
   doc.moveDown();
 
   doc.fontSize(10);
-  doc.text('Code', 40, doc.y, { continued: true, width: 80 });
+  doc.text('SKU', 40, doc.y, { continued: true, width: 80 });
   doc.text('Name', 120, doc.y, { continued: true, width: 180 });
-  doc.text('Stock', 300, doc.y, { continued: true, width: 80 });
-  doc.text('Total In', 380, doc.y, { continued: true, width: 80 });
-  doc.text('Total Out', 460, doc.y, { width: 80 });
+  doc.text('Stock', 300, doc.y, { continued: true, width: 60 });
+  doc.text('Min', 360, doc.y, { continued: true, width: 60 });
+  doc.text('Price', 420, doc.y, { width: 80 });
   doc.moveDown(0.5);
 
   products.forEach((item) => {
-    doc.text(String(item.code || ''), 40, doc.y, { continued: true, width: 80 });
+    doc.text(String(item.sku || ''), 40, doc.y, { continued: true, width: 80 });
     doc.text(String(item.name || ''), 120, doc.y, { continued: true, width: 180 });
-    doc.text(String(item.stock || 0), 300, doc.y, { continued: true, width: 80 });
-    doc.text(String(item.total_in || 0), 380, doc.y, { continued: true, width: 80 });
-    doc.text(String(item.total_out || 0), 460, doc.y, { width: 80 });
+    doc.text(String(item.stock || 0), 300, doc.y, { continued: true, width: 60 });
+    doc.text(String(item.min_stock || 0), 360, doc.y, { continued: true, width: 60 });
+    doc.text(String(item.price || ''), 420, doc.y, { width: 80 });
   });
 
   doc.end();

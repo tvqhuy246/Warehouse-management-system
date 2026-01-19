@@ -5,24 +5,26 @@ const buildProductsWorkbook = async (products = []) => {
   const sheet = workbook.addWorksheet('Products');
 
   sheet.columns = [
-    { header: 'Code', key: 'code', width: 15 },
-    { header: 'Name', key: 'name', width: 25 },
-    { header: 'Unit', key: 'uom', width: 10 },
-    { header: 'Category', key: 'category', width: 15 },
-    { header: 'Total In', key: 'total_in', width: 12 },
-    { header: 'Total Out', key: 'total_out', width: 12 },
+    { header: 'SKU', key: 'sku', width: 15 },
+    { header: 'Name', key: 'name', width: 30 },
+    { header: 'Unit', key: 'unit', width: 10 },
+    { header: 'Category', key: 'category_id', width: 20 },
+    { header: 'Price', key: 'price', width: 12 },
     { header: 'Stock', key: 'stock', width: 12 },
+    { header: 'Min Stock', key: 'min_stock', width: 12 },
+    { header: 'Low Stock', key: 'low_stock', width: 12 },
   ];
 
   products.forEach((item) => {
     sheet.addRow({
-      code: item.code,
+      sku: item.sku,
       name: item.name,
-      uom: item.uom,
-      category: item.category,
-      total_in: Number(item.total_in || 0),
-      total_out: Number(item.total_out || 0),
+      unit: item.unit,
+      category_id: item.category_id,
+      price: item.price ?? '',
       stock: Number(item.stock || 0),
+      min_stock: Number(item.min_stock || 0),
+      low_stock: item.low_stock ? 'YES' : 'NO',
     });
   });
 
