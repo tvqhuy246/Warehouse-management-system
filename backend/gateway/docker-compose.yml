@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # 1. Dịch vụ Nginx (Gateway)
+  gateway:
+    image: nginx:alpine
+    ports:
+      - "8000:80" # Map cổng 8000 của máy bạn vào cổng 80 của container
+    volumes:
+      # Map file cấu hình từ máy bạn vào trong container Nginx
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - auth-service
+
+  # 2. Dịch vụ Auth
+  auth-service:
+    build: ../auth-service # Đường dẫn đến thư mục chứa Dockerfile bạn vừa tạo
+    container_name: auth-service # Tên này phải TRÙNG KHỚP với tên trong file auth.conf (http://auth-service:8081)
+    ports:
+      - "8081:8081" # Để bạn test trực tiếp nếu cần
+    environment:
+      - PORT=8081
+      - DB_HOST=database-service # Tên service DB ở dưới
+      - DB_USER=root
+      - DB_PASS=rootpassword
+      - DB_NAME=warehouse_db
+
+    # "đường ống" (volume) nối thông từ máy bạn vào container để tự cập nhật ngay mà không cần build lại (tắt đi bật lại (restart) hoặc cài thêm thư viện nodemon là code tự cập nhật tức thì)
+    volumes:
+      - ../auth-service:/app
+      - /app/node_modules # Giữ lại thư viện bên trong container
+    depends_on:
+      - database-service # Chờ DB chạy xong mới chạy Auth
+
+  # 3. Database MySQL
+  database-service:
+    image: mysql:8.0
+    container_name: database-service
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: warehouse_db
+    ports:
+      - "3307:3306" # Để bạn có thể dùng Workbench/DBeaver xem dữ liệu từ bên ngoài (Cổng máy bạn : Cổng trong Docker)
