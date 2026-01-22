@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import authService from '../api/authService';
 
 const RegisterPage = () => {
@@ -7,9 +7,10 @@ const RegisterPage = () => {
         username: '',
         password: '',
         confirmPassword: '',
-        email: ''
+        full_name: '' // Changed email to full_name to match backend
     });
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -18,6 +19,8 @@ const RegisterPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
+        setSuccess('');
 
         if (formData.password !== formData.confirmPassword) {
             setError('Passwords do not match');
@@ -25,24 +28,40 @@ const RegisterPage = () => {
         }
 
         try {
-            await authService.register({
+            await authService.createStaff({
                 username: formData.username,
                 password: formData.password,
-                email: formData.email
+                full_name: formData.full_name
             });
-            // Redirect to login after successful registration
-            navigate('/login', { state: { message: 'Registration successful! Please login.' } });
+            setSuccess('Staff account created successfully!');
+            // Reset form
+            setFormData({
+                username: '',
+                password: '',
+                confirmPassword: '',
+                full_name: ''
+            });
         } catch (err) {
             console.error(err);
-            setError('Registration failed. Username or email might be taken.');
+            setError('Failed to create staff. Username might be taken.');
         }
     };
 
     return (
         <div className="register-page">
             <div className="card register-card">
-                <h1 className="page-title" style={{ textAlign: 'center' }}>Create Account</h1>
+                <h1 className="page-title" style={{ textAlign: 'center' }}>Create Staff Account</h1>
                 {error && <div className="alert-error">{error}</div>}
+                {success && <div className="alert-success" style={{
+                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                    color: '#6ee7b7',
+                    padding: '0.75rem',
+                    borderRadius: '6px',
+                    marginBottom: '1rem',
+                    textAlign: 'center',
+                    border: '1px solid rgba(16, 185, 129, 0.4)'
+                }}>{success}</div>}
+
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
                         <label className="form-label">Username</label>
@@ -56,12 +75,12 @@ const RegisterPage = () => {
                         />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Email</label>
+                        <label className="form-label">Full Name</label>
                         <input
-                            type="email"
-                            name="email"
+                            type="text"
+                            name="full_name"
                             className="form-input"
-                            value={formData.email}
+                            value={formData.full_name}
                             onChange={handleChange}
                             required
                         />
@@ -88,11 +107,7 @@ const RegisterPage = () => {
                             required
                         />
                     </div>
-                    <button type="submit" className="btn-primary" style={{ width: '100%' }}>Register</button>
-
-                    <div style={{ marginTop: '1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        Already have an account? <Link to="/login" style={{ color: 'var(--primary-color)' }}>Login here</Link>
-                    </div>
+                    <button type="submit" className="btn-primary" style={{ width: '100%' }}>Create Staff</button>
                 </form>
             </div>
             <style>{`

@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  inventory-service:
+    build: .
+    container_name: inventory-service
+    environment:
+      PORT: 3000
+      PRODUCT_SERVICE_URL: http://product-service:3002
+      INOUTBOUND_SERVICE_URL: http://inoutbound-service:3000
+      HTTP_TIMEOUT_MS: 10000
+    ports:
+      - "3000:3000"
+    networks:
+      - warehouse-network
+
+networks:
+  warehouse-network:
+    driver: bridge

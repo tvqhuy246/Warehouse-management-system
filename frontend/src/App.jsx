@@ -18,7 +18,6 @@ function App() {
         <div className="container">
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
 
             {/* Protected Routes for Valid Users */}
             <Route element={<ProtectedRoute />}>
@@ -29,6 +28,7 @@ function App() {
             {/* Admin Only Routes */}
             <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
               <Route path="/products" element={<ProductPage />} />
+              <Route path="/create-staff" element={<RegisterPage />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

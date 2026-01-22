@@ -61,7 +61,7 @@ const LoginPage = () => {
                     </div>
                     <button type="submit" className="btn-primary" style={{ width: '100%' }}>Login</button>
                     <div style={{ marginTop: '1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        Don't have an account? <Link to="/register" style={{ color: 'var(--primary-color)' }}>Register here</Link>
+                        <span style={{ fontSize: '0.9rem' }}>Contact admin to create account</span>
                     </div>
                 </form>
             </div>

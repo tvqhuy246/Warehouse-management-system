@@ -25,7 +25,10 @@ const Navbar = () => {
                         <>
                             <Link to="/dashboard" className={`nav-link ${isActive('/dashboard')}`}>Dashboard</Link>
                             {isAdmin() && (
-                                <Link to="/products" className={`nav-link ${isActive('/products')}`}>Products</Link>
+                                <>
+                                    <Link to="/products" className={`nav-link ${isActive('/products')}`}>Products</Link>
+                                    <Link to="/create-staff" className={`nav-link ${isActive('/create-staff')}`}>Create Staff</Link>
+                                </>
                             )}
                             <Link to="/inventory" className={`nav-link ${isActive('/inventory')}`}>Inventory</Link>
                             <span className="user-badge">{getUserRole().toUpperCase()}</span>

@@ -4,8 +4,8 @@ const authService = {
     login: (credentials) => {
         return axiosClient.post('/api/auth/login', credentials);
     },
-    register: (userData) => {
-        return axiosClient.post('/api/auth/register', userData);
+    createStaff: (userData) => {
+        return axiosClient.post('/api/auth/register-staff', userData);
     },
     logout: () => {
         localStorage.removeItem('token');
