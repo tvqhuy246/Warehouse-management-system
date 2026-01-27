@@ -6,7 +6,23 @@ const inventoryRoutes = require('./routes/inventory.routes');
 const reportRoutes = require('./routes/report.routes');
 const exportRoutes = require('./routes/export.routes');
 
+const { sequelize, testConnection } = require('./config/database');
+const models = require('./models'); // Load models
+const globalErrorHandler = require('./utils/errorHandler');
+
 const app = express();
+
+// Kết nối và Sync DB
+const initDB = async () => {
+  await testConnection();
+  try {
+    await sequelize.sync();
+    console.log('Inventory models synced');
+  } catch (err) {
+    console.error('Failed to sync inventory models:', err);
+  }
+};
+initDB();
 
 // Kích hoạt CORS, JSON parsing và logging
 app.use(cors());
@@ -21,15 +37,7 @@ app.use('/inventory', inventoryRoutes);
 app.use('/reports', reportRoutes);
 app.use('/export', exportRoutes);
 
-// Bộ xử lý lỗi toàn cầu - bắt tất cả các lỗi từ các route và middleware
-app.use((err, req, res, next) => {
-  // Xử lý lỗi tập trung để giữ cho phản hồi nhất quán
-  // eslint-disable-next-line no-console
-  console.error(err);
-  const status = err.status || 500;
-  res.status(status).json({
-    error: err.message || 'Internal Server Error',
-  });
-});
+// Global Error Handler
+app.use(globalErrorHandler);
 
 module.exports = app;

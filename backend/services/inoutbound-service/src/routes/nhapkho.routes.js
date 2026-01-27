@@ -12,8 +12,14 @@ router.post('/', nhapKhoController.taoPhieuNhap.bind(nhapKhoController));
 // Lấy danh sách phiếu nhập
 router.get('/', nhapKhoController.layDanhSachPhieuNhap.bind(nhapKhoController));
 
+// Xuất file Excel
+router.get('/export', nhapKhoController.exportPhieuNhap.bind(nhapKhoController));
+
 // Lấy chi tiết phiếu nhập
 router.get('/:id', nhapKhoController.layChiTietPhieuNhap.bind(nhapKhoController));
+
+// Lấy vận đơn (Bill of Lading)
+router.get('/:id/vandon', nhapKhoController.layVanDon.bind(nhapKhoController));
 
 // Hủy phiếu nhập
 router.delete('/:id', nhapKhoController.huyPhieuNhap.bind(nhapKhoController));

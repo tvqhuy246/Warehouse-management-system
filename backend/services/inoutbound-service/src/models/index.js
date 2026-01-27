@@ -1,42 +1,27 @@
 // File tập trung các models và thiết lập quan hệ
 const Product = require('./Product');
-const InboundReceipt = require('./InboundReceipt');
-const OutboundReceipt = require('./OutboundReceipt');
-const ReceiptItem = require('./ReceiptItem');
+const Partner = require('./Partner');
+const Order = require('./Order');
+const OrderDetail = require('./OrderDetail');
 const InventoryHistory = require('./InventoryHistory');
 
-// Thiết lập quan hệ giữa Receipt và ReceiptItem
-InboundReceipt.hasMany(ReceiptItem, {
-    foreignKey: 'receipt_id',
-    constraints: false,
-    scope: { receipt_type: 'INBOUND' },
-    as: 'chi_tiet'
-});
+// Relationships
+Order.belongsTo(Partner, { foreignKey: 'partner_id', as: 'partner' });
+Partner.hasMany(Order, { foreignKey: 'partner_id', as: 'orders' });
 
-OutboundReceipt.hasMany(ReceiptItem, {
-    foreignKey: 'receipt_id',
-    constraints: false,
-    scope: { receipt_type: 'OUTBOUND' },
-    as: 'chi_tiet'
-});
+Order.hasMany(OrderDetail, { foreignKey: 'order_id', as: 'details' });
+OrderDetail.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
 
-// Thiết lập quan hệ ngược lại
-ReceiptItem.belongsTo(InboundReceipt, {
-    foreignKey: 'receipt_id',
-    constraints: false,
-    as: 'phieu_nhap'
-});
+// Link OrderDetail to Product (local cache for quick lookups)
+OrderDetail.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
 
-ReceiptItem.belongsTo(OutboundReceipt, {
-    foreignKey: 'receipt_id',
-    constraints: false,
-    as: 'phieu_xuat'
-});
+const { sequelize } = require('../config/database');
 
 module.exports = {
+    sequelize,
     Product,
-    InboundReceipt,
-    OutboundReceipt,
-    ReceiptItem,
+    Partner,
+    Order,
+    OrderDetail,
     InventoryHistory
 };

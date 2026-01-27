@@ -83,6 +83,11 @@ services:
     environment:
       PORT: 8083
       PRODUCT_SERVICE_URL: http://product-service:8082
+      INOUTBOUND_SERVICE_URL: http://inoutbound-service:3000
+      DB_HOST: mysql-db
+      DB_USER: root
+      DB_PASSWORD: rootpassword
+      DB_NAME: inventory_db
     ports:
       - "8083:8083"
 

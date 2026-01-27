@@ -24,13 +24,27 @@ const Navbar = () => {
                     {isAuthenticated ? (
                         <>
                             <Link to="/dashboard" className={`nav-link ${isActive('/dashboard')}`}>Dashboard</Link>
+                            <Link to="/inventory" className={`nav-link ${isActive('/inventory')}`}>Inventory</Link>
+                            <Link to="/inbound" className={`nav-link ${isActive('/inbound')}`}>Inbound</Link>
+                            <Link to="/outbound" className={`nav-link ${isActive('/outbound')}`}>Outbound</Link>
+                            <Link to="/partners" className={`nav-link ${isActive('/partners')}`}>Partners</Link>
+
                             {isAdmin() && (
                                 <>
-                                    <Link to="/products" className={`nav-link ${isActive('/products')}`}>Products</Link>
-                                    <Link to="/create-staff" className={`nav-link ${isActive('/create-staff')}`}>Create Staff</Link>
+                                    <Link to="/categories" className={`nav-link ${location.pathname === '/categories' ? 'active' : ''}`}>
+                                        <span className="nav-icon">📂</span>
+                                        Categories
+                                    </Link>
+                                    <Link to="/locations" className={`nav-link ${location.pathname === '/locations' ? 'active' : ''}`}>
+                                        <span className="nav-icon">📍</span>
+                                        Locations
+                                    </Link>
+                                    <Link to="/create-staff" className={`nav-link ${location.pathname === '/create-staff' ? 'active' : ''}`}>
+                                        <span className="nav-icon">👤</span>
+                                        Create Staff
+                                    </Link>
                                 </>
                             )}
-                            <Link to="/inventory" className={`nav-link ${isActive('/inventory')}`}>Inventory</Link>
                             <span className="user-badge">{getUserRole().toUpperCase()}</span>
                             <button onClick={handleLogout} className="btn-logout">Logout</button>
                         </>

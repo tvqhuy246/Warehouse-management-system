@@ -1,267 +1,315 @@
 const { sequelize } = require('../config/database');
-const { InboundReceipt, ReceiptItem, Product } = require('../models');
-const tonKhoService = require('../services/tonkho.service');
+const { Op } = require('sequelize');
+const { Order, OrderDetail, Partner, Product } = require('../models');
+const inventoryApi = require('../services/inventory.api');
+const productApi = require('../services/product.api');
+const ExcelJS = require('exceljs');
 
-/**
- * Controller xử lý các thao tác nhập kho
- */
 class NhapKhoController {
+    /**
+     * Xuất danh sách phiếu nhập ra Excel
+     */
+    async exportPhieuNhap(req, res) {
+        try {
+            // 1. Lấy danh sách phiếu nhập từ DB
+            const { from, to } = req.query;
+            const whereClause = { type: 'IN' };
+
+            if (from || to) {
+                whereClause.created_at = {};
+                if (from) whereClause.created_at[Op.gte] = new Date(from);
+                if (to) whereClause.created_at[Op.lte] = new Date(new Date(to).setHours(23, 59, 59, 999));
+            }
+
+            const orders = await Order.findAll({
+                where: whereClause,
+                include: [
+                    { model: Partner, as: 'partner' },
+                    { model: OrderDetail, as: 'details' }
+                ],
+                order: [['created_at', 'DESC']]
+            });
+
+            // 2. Lấy danh sách tất cả sản phẩm từ Product Service để map thông tin
+            const products = await productApi.getAllProducts();
+            const productMap = {};
+            products.forEach(p => {
+                productMap[p.id] = p;
+            });
+
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Danh sách Phiếu Nhập');
+
+            worksheet.columns = [
+                { header: 'Mã Phiếu', key: 'order_code', width: 20 },
+                { header: 'Nhà Cung Cấp', key: 'partner_name', width: 30 },
+                { header: 'Ngày Nhập', key: 'created_at', width: 25 },
+                { header: 'Người Tạo', key: 'created_by', width: 20 },
+                { header: 'Tổng Tiền', key: 'total_amount', width: 20 },
+                { header: 'Trạng Thái', key: 'status', width: 15 },
+                { header: 'Sản Phẩm', key: 'products', width: 40 },
+                { header: 'Vị Trí', key: 'locations', width: 30 }
+            ];
+
+            orders.forEach(order => {
+                const productList = [];
+                const locationList = [];
+
+                order.details.forEach(d => {
+                    const product = productMap[d.product_id];
+                    const sku = product ? product.sku : 'N/A';
+                    const name = product ? (product.name || product.ten_san_pham) : d.product_id;
+
+                    productList.push(`${sku} - ${name} (${d.quantity})`);
+
+                    if (d.location_code) {
+                        locationList.push(`${d.location_code} (${d.quantity})`);
+                    }
+                });
+
+                worksheet.addRow({
+                    order_code: order.order_code,
+                    partner_name: order.partner?.name,
+                    created_at: new Date(order.createdAt || order.created_at).toLocaleString('vi-VN'),
+                    created_by: order.created_by,
+                    total_amount: order.total_amount,
+                    status: order.status,
+                    products: productList.join(',\n'),
+                    locations: locationList.join(',\n')
+                });
+
+                worksheet.lastRow.getCell('products').alignment = { wrapText: true };
+                worksheet.lastRow.getCell('locations').alignment = { wrapText: true };
+            });
+
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename=PhieuNhap.xlsx');
+
+            await workbook.xlsx.write(res);
+            res.end();
+        } catch (error) {
+            console.error('Export Error:', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    }
 
     /**
-     * Tạo phiếu nhập kho mới
-     * POST /api/nhapkho
+     * Tạo phiếu nhập kho mới (PN)
      */
     async taoPhieuNhap(req, res) {
+        console.log('DEBUG: taoPhieuNhap called', req.body);
         const transaction = await sequelize.transaction();
-
         try {
-            const { nha_cung_cap, ngay_nhap, nguoi_tao, ghi_chu, chi_tiet } = req.body;
+            const { partner_id, warehouse_id, note, details, created_by } = req.body;
+            console.log('DEBUG: Transaction started');
 
-            // Validate dữ liệu đầu vào
-            if (!nha_cung_cap || !ngay_nhap || !nguoi_tao || !chi_tiet || chi_tiet.length === 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Thiếu thông tin bắt buộc: nha_cung_cap, ngay_nhap, nguoi_tao, chi_tiet'
-                });
+            if (!partner_id || !details || details.length === 0) {
+                if (transaction) await transaction.rollback();
+                return res.status(400).json({ success: false, message: 'Thiếu thông tin partner_id hoặc chi tiết hàng' });
             }
 
-            // Tạo mã phiếu nhập tự động
-            const ma_phieu_nhap = await this.taoMaPhieuNhap();
+            // Kiểm tra partner
+            const partner = await Partner.findByPk(partner_id);
+            if (!partner || partner.type !== 1) {
+                if (transaction) await transaction.rollback();
+                return res.status(400).json({ success: false, message: 'Nhà cung cấp không hợp lệ' });
+            }
 
-            // Tạo phiếu nhập
-            const phieuNhap = await InboundReceipt.create({
-                ma_phieu_nhap,
-                nha_cung_cap,
-                ngay_nhap,
-                nguoi_tao,
-                ghi_chu,
-                trang_thai: 'DRAFT'
+            const order_code = await this.taoMaPhieu('PN');
+
+            const order = await Order.create({
+                order_code,
+                type: 'IN',
+                status: 'PENDING',
+                partner_id,
+                warehouse_id: warehouse_id || 1,
+                note,
+                created_by
             }, { transaction });
 
-            // Tạo chi tiết phiếu nhập
-            const chiTietPromises = chi_tiet.map(item =>
-                ReceiptItem.create({
-                    receipt_type: 'INBOUND',
-                    receipt_id: phieuNhap.id,
+            let total_amount = 0;
+            const orderDetails = details.map(item => {
+                total_amount += Number(item.quantity) * Number(item.price);
+                return {
+                    order_id: order.id,
                     product_id: item.product_id,
-                    so_luong: item.so_luong,
-                    don_gia: item.don_gia || null,
-                    ghi_chu: item.ghi_chu || null
-                }, { transaction })
-            );
+                    quantity: item.quantity,
+                    price: item.price,
+                    actual_quantity: item.quantity, // Mặc định khớp
+                    location_code: item.location_code || null
+                };
+            });
 
-            await Promise.all(chiTietPromises);
+            await OrderDetail.bulkCreate(orderDetails, { transaction });
+            await order.update({ total_amount }, { transaction });
 
-            // Cập nhật tồn kho cho từng sản phẩm
-            for (const item of chi_tiet) {
-                await tonKhoService.tangTonKho(
-                    item.product_id,
-                    item.so_luong,
-                    phieuNhap.id,
-                    nguoi_tao,
-                    transaction
-                );
-            }
-
-            // Cập nhật trạng thái phiếu thành COMPLETED
-            await phieuNhap.update({ trang_thai: 'COMPLETED' }, { transaction });
+            // Tự động COMPLETE và gọi Inventory (Theo yêu cầu: "Khi một đơn hàng chuyển sang COMPLETED, tự động gọi API sang Inventory Service")
+            // Ở đây tôi giả định tạo xong là COMPLETE luôn nếu là nhập kho thẳng
+            await order.update({ status: 'COMPLETED' }, { transaction });
 
             await transaction.commit();
 
-            // Lấy lại phiếu nhập với đầy đủ thông tin
-            const result = await InboundReceipt.findByPk(phieuNhap.id, {
-                include: [{
-                    model: ReceiptItem,
-                    as: 'chi_tiet',
-                    include: [{
-                        model: Product,
-                        as: 'san_pham',
-                        attributes: ['id', 'sku', 'ten_san_pham', 'don_vi_tinh']
-                    }]
-                }]
+            // Gọi Inventory Service
+            try {
+                await inventoryApi.updateStock({
+                    order_id: order.id,
+                    type: 'IN',
+                    items: details,
+                    performed_by: order.created_by
+                });
+            } catch (invError) {
+                console.error('Inventory Sync Error:', invError.message);
+            }
+
+            const result = await Order.findByPk(order.id, {
+                include: [
+                    { model: Partner, as: 'partner' },
+                    { model: OrderDetail, as: 'details' }
+                ]
             });
 
-            res.status(201).json({
-                success: true,
-                message: 'Tạo phiếu nhập kho thành công',
-                data: result
-            });
-
+            res.status(201).json({ success: true, data: result });
         } catch (error) {
-            await transaction.rollback();
-            console.error('Lỗi tạo phiếu nhập:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Lỗi khi tạo phiếu nhập kho',
-                error: error.message
-            });
+            console.error('DEBUG: taoPhieuNhap Error:', error);
+            if (transaction && !transaction.finished) await transaction.rollback();
+            res.status(500).json({ success: false, error: error.message });
         }
     }
 
-    /**
-     * Lấy danh sách phiếu nhập
-     * GET /api/nhapkho
-     */
     async layDanhSachPhieuNhap(req, res) {
         try {
-            const { trang_thai, tu_ngay, den_ngay, page = 1, limit = 20 } = req.query;
+            const { from, to } = req.query;
+            const whereClause = { type: 'IN' };
 
-            const where = {};
-
-            if (trang_thai) {
-                where.trang_thai = trang_thai;
+            if (from || to) {
+                whereClause.created_at = {};
+                if (from) whereClause.created_at[Op.gte] = new Date(from);
+                if (to) whereClause.created_at[Op.lte] = new Date(new Date(to).setHours(23, 59, 59, 999));
             }
 
-            if (tu_ngay || den_ngay) {
-                where.ngay_nhap = {};
-                if (tu_ngay) where.ngay_nhap[sequelize.Op.gte] = tu_ngay;
-                if (den_ngay) where.ngay_nhap[sequelize.Op.lte] = den_ngay;
-            }
-
-            const offset = (page - 1) * limit;
-
-            const { count, rows } = await InboundReceipt.findAndCountAll({
-                where,
-                include: [{
-                    model: ReceiptItem,
-                    as: 'chi_tiet',
-                    include: [{
-                        model: Product,
-                        as: 'san_pham',
-                        attributes: ['id', 'sku', 'ten_san_pham', 'don_vi_tinh']
-                    }]
-                }],
-                order: [['created_at', 'DESC']],
-                limit: parseInt(limit),
-                offset: parseInt(offset)
+            const orders = await Order.findAll({
+                where: whereClause,
+                include: [{ model: Partner, as: 'partner' }],
+                order: [['created_at', 'DESC']]
             });
-
-            res.json({
-                success: true,
-                data: rows,
-                pagination: {
-                    total: count,
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    total_pages: Math.ceil(count / limit)
-                }
-            });
-
+            res.json({ success: true, data: orders });
         } catch (error) {
-            console.error('Lỗi lấy danh sách phiếu nhập:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Lỗi khi lấy danh sách phiếu nhập',
-                error: error.message
-            });
+            res.status(500).json({ success: false, error: error.message });
         }
     }
 
-    /**
-     * Lấy chi tiết phiếu nhập
-     * GET /api/nhapkho/:id
-     */
     async layChiTietPhieuNhap(req, res) {
         try {
-            const { id } = req.params;
-
-            const phieuNhap = await InboundReceipt.findByPk(id, {
-                include: [{
-                    model: ReceiptItem,
-                    as: 'chi_tiet',
-                    include: [{
-                        model: Product,
-                        as: 'san_pham'
-                    }]
-                }]
+            const order = await Order.findByPk(req.params.id, {
+                include: [
+                    { model: Partner, as: 'partner' },
+                    { model: OrderDetail, as: 'details' }
+                ]
             });
+            if (!order) return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu' });
 
-            if (!phieuNhap) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Không tìm thấy phiếu nhập'
-                });
+            // Fetch all products to map info
+            const products = await productApi.getAllProducts();
+            const productMap = {};
+            if (Array.isArray(products)) {
+                products.forEach(p => { productMap[p.id] = p; });
             }
 
-            res.json({
-                success: true,
-                data: phieuNhap
+            // Transform details to include product info
+            const orderJSON = order.toJSON();
+            orderJSON.details = orderJSON.details.map(d => {
+                const product = productMap[d.product_id] || {};
+                return {
+                    ...d,
+                    product: {
+                        id: product.id || d.product_id,
+                        ten_san_pham: product.name || product.ten_san_pham || 'Unknown Product',
+                        sku: product.sku || 'N/A',
+                        don_vi_tinh: product.unit || product.don_vi_tinh || '',
+                        price: product.price || 0
+                    }
+                };
             });
 
+            res.json({ success: true, data: orderJSON });
         } catch (error) {
-            console.error('Lỗi lấy chi tiết phiếu nhập:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Lỗi khi lấy chi tiết phiếu nhập',
-                error: error.message
-            });
+            console.error('Error in layChiTietPhieuNhap:', error);
+            res.status(500).json({ success: false, error: error.message });
         }
     }
 
     /**
-     * Hủy phiếu nhập
-     * DELETE /api/nhapkho/:id
+     * API trả về JSON chuẩn để in Vận đơn (Bill of Lading)
      */
+    /**
+     * API trả về JSON chuẩn để in Vận đơn (Bill of Lading)
+     */
+    async layVanDon(req, res) {
+        try {
+            const order = await Order.findByPk(req.params.id, {
+                include: [
+                    { model: Partner, as: 'partner' },
+                    { model: OrderDetail, as: 'details' }
+                ]
+            });
+
+            if (!order) return res.status(404).json({ success: false, message: 'Không tìm thấy order' });
+
+            // Fetch products for details (FIXED: Don't rely on Include Product)
+            const products = await productApi.getAllProducts();
+            const productMap = {};
+            products.forEach(p => { productMap[p.id] = p; });
+
+            const bol = {
+                document_type: 'BILL_OF_LADING',
+                order_code: order.order_code,
+                date: order.created_at,
+                warehouse: "Warehouse Central",
+                partner: {
+                    name: order.partner.name,
+                    type: order.partner.type === 1 ? 'Supplier' : 'Customer',
+                    address: order.partner.address,
+                    phone: order.partner.phone
+                },
+                items: order.details.map(d => {
+                    const product = productMap[d.product_id] || {};
+                    return {
+                        sku: product.sku || 'N/A',
+                        name: product.name || product.ten_san_pham || d.product_id,
+                        quantity: d.quantity,
+                        uom: product.unit || product.don_vi_tinh,
+                        price: d.price,
+                        total: Number(d.quantity) * Number(d.price)
+                    };
+                }),
+                total_amount: order.total_amount,
+                status: order.status,
+                created_by: order.created_by
+            };
+
+            res.json({ success: true, data: bol });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    }
+
     async huyPhieuNhap(req, res) {
         try {
-            const { id } = req.params;
-
-            const phieuNhap = await InboundReceipt.findByPk(id);
-
-            if (!phieuNhap) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Không tìm thấy phiếu nhập'
-                });
+            const order = await Order.findByPk(req.params.id);
+            if (!order || order.status === 'COMPLETED') {
+                return res.status(400).json({ success: false, message: 'Không thể hủy phiếu đã hoàn thành' });
             }
-
-            if (phieuNhap.trang_thai === 'COMPLETED') {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Không thể hủy phiếu đã hoàn thành. Vui lòng tạo phiếu xuất điều chỉnh.'
-                });
-            }
-
-            await phieuNhap.update({ trang_thai: 'CANCELLED' });
-
-            res.json({
-                success: true,
-                message: 'Hủy phiếu nhập thành công',
-                data: phieuNhap
-            });
-
+            await order.update({ status: 'CANCELLED' });
+            res.json({ success: true, message: 'Đã hủy phiếu' });
         } catch (error) {
-            console.error('Lỗi hủy phiếu nhập:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Lỗi khi hủy phiếu nhập',
-                error: error.message
-            });
+            res.status(500).json({ success: false, error: error.message });
         }
     }
 
-    /**
-     * Tạo mã phiếu nhập tự động
-     */
-    async taoMaPhieuNhap() {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-
-        const prefix = `PN${year}${month}${day}`;
-
-        // Đếm số phiếu nhập trong ngày
-        const count = await InboundReceipt.count({
-            where: {
-                ma_phieu_nhap: {
-                    [sequelize.Op.like]: `${prefix}%`
-                }
-            }
-        });
-
-        const sequence = String(count + 1).padStart(4, '0');
-        return `${prefix}${sequence}`;
+    async taoMaPhieu(prefix) {
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const count = await Order.count({ where: { order_code: { [Op.like]: `${prefix}-${dateStr}-%` } } });
+        return `${prefix}-${dateStr}-${String(count + 1).padStart(3, '0')}`;
     }
 }
 

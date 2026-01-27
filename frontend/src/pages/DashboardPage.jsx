@@ -9,15 +9,24 @@ const DashboardPage = () => {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                // Assuming we have a statistics endpoint, or we calculate from others
-                // data might look like { totalProducts: 10, ... }
-                // Since api/statistics is mapped in nginx, we use it
-                const response = await inventoryService.getStatistics();
-                setStats(response.data);
+                const response = await inventoryService.getReport();
+                const reportData = response.data.data || response.data;
+
+                if (Array.isArray(reportData)) {
+                    const totalProducts = reportData.length;
+                    const totalInventory = reportData.reduce((sum, item) => sum + (item.current_stock || 0), 0);
+                    const lowStock = reportData.filter(item => item.status === 'LOW_STOCK').length;
+
+                    setStats({
+                        totalProducts,
+                        totalInventory,
+                        lowStock,
+                        pendingOrders: 5 // Placeholder or fetch from inout service
+                    });
+                }
             } catch (error) {
                 console.error("Failed to fetch stats", error);
-                // Fallback for demo if backend is empty/down
-                setStats({ totalProducts: 120, totalInventory: 4500, lowStock: 5 });
+                setStats({ totalProducts: 0, totalInventory: 0, lowStock: 0, pendingOrders: 0 });
             } finally {
                 setLoading(false);
             }
@@ -52,26 +61,6 @@ const DashboardPage = () => {
                 <p style={{ color: 'var(--text-secondary)' }}>No recent activity to display.</p>
                 {/* Placeholder for future charts */}
             </div>
-
-            <style>{`
-                .stats-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-                    gap: 1.5rem;
-                }
-                .stat-card h3 {
-                    margin: 0;
-                    color: var(--text-secondary);
-                    font-size: 0.875rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                }
-                .stat-value {
-                    font-size: 2.5rem;
-                    font-weight: 700;
-                    margin-top: 0.5rem;
-                }
-            `}</style>
         </div>
     );
 };

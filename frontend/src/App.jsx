@@ -1,41 +1,49 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Navbar from './components/Navbar';
+import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
-import ProductPage from './pages/ProductPage';
 import InventoryPage from './pages/InventoryPage';
-import './App.css';
+import InboundPage from './pages/InboundPage';
+import OutboundPage from './pages/OutboundPage';
+import PartnerPage from './pages/PartnerPage';
+import ProductPage from './pages/ProductPage';
+import CategoryPage from './pages/CategoryPage';
+import LocationManagementPage from './pages/LocationManagementPage';
+import CreateStaffPage from './pages/CreateStaffPage';
+
+import Sidebar from './components/Sidebar';
 
 function App() {
-  const isAuthenticated = !!localStorage.getItem('token'); // Simple auth check
-
   return (
-    <Router>
-      <div className="App">
-        <Navbar />
-        <div className="container">
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-
-            {/* Protected Routes for Valid Users */}
-            <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/inventory" element={<InventoryPage />} />
-            </Route>
-
-            {/* Admin Only Routes */}
-            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-              <Route path="/products" element={<ProductPage />} />
-              <Route path="/create-staff" element={<RegisterPage />} />
-            </Route>
-
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </div>
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/*" element={
+            <div className="app-container">
+              <Sidebar />
+              <main className="main-content">
+                <ProtectedRoute>
+                  <Routes>
+                    <Route path="/" element={<DashboardPage />} />
+                    <Route path="/dashboard" element={<DashboardPage />} />
+                    <Route path="/inventory" element={<InventoryPage />} />
+                    <Route path="/inbound" element={<InboundPage />} />
+                    <Route path="/outbound" element={<OutboundPage />} />
+                    <Route path="/partners" element={<PartnerPage />} />
+                    <Route path="/products" element={<ProtectedRoute requiredRole="admin"><ProductPage /></ProtectedRoute>} />
+                    <Route path="/categories" element={<ProtectedRoute requiredRole="admin"><CategoryPage /></ProtectedRoute>} />
+                    <Route path="/locations" element={<ProtectedRoute requiredRole="admin"><LocationManagementPage /></ProtectedRoute>} />
+                    <Route path="/create-staff" element={<ProtectedRoute requiredRole="admin"><CreateStaffPage /></ProtectedRoute>} />
+                  </Routes>
+                </ProtectedRoute>
+              </main>
+            </div>
+          } />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 

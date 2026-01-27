@@ -1,6 +1,9 @@
 import axiosClient from './axiosClient';
 
 const productService = {
+    getProducts: () => {
+        return axiosClient.get('/api/products/');
+    },
     getAllProducts: () => {
         return axiosClient.get('/api/products/');
     },

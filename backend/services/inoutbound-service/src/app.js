@@ -10,6 +10,7 @@ const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 const nhapKhoRoutes = require('./routes/nhapkho.routes');
 const xuatKhoRoutes = require('./routes/xuatkho.routes');
 const tonKhoRoutes = require('./routes/tonkho.routes');
+const partnerRoutes = require('./routes/partner.routes');
 
 // Khởi tạo Express app
 const app = express();
@@ -33,6 +34,7 @@ app.get('/health', (req, res) => {
 app.use('/api/nhapkho', nhapKhoRoutes);
 app.use('/api/xuatkho', xuatKhoRoutes);
 app.use('/api/tonkho', tonKhoRoutes);
+app.use('/api/partners', partnerRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -60,6 +62,10 @@ const startServer = async () => {
     try {
         // Kiểm tra kết nối database
         await testConnection();
+
+        // Sync models
+        await require('./models/index').sequelize.sync();
+        console.log('✓ InOutBound models synced');
 
         // Khởi động server
         app.listen(PORT, () => {
