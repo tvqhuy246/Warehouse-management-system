@@ -9,14 +9,20 @@ const JWT_SECRET = process.env.JWT_SECRET || 'bi_mat_khong_the_bat_mi';
 // 1. Đăng nhập
 exports.login = async (req, res) => {
     const { username, password } = req.body;
+    console.log("Login attempt:", { username, password }); // DEBUG
+
     try {
-        // Tìm user trong DB
-        const [rows] = await promisePool.query("SELECT * FROM users WHERE username = ?", [username]);
+        // Tìm user trong DB (theo username HOẶC email)
+        const [rows] = await promisePool.query("SELECT * FROM users WHERE username = ? OR email = ?", [username, username]);
+        console.log("User found:", rows.length > 0 ? rows[0].username : "None"); // DEBUG
+
         if (rows.length === 0) return res.status(401).json({ message: "Sai tên đăng nhập hoặc mật khẩu!" });
 
         const user = rows[0];
         // So sánh mật khẩu
         const isMatch = await bcrypt.compare(password, user.password);
+        console.log("Password match:", isMatch); // DEBUG
+
         if (!isMatch) return res.status(401).json({ message: "Sai tên đăng nhập hoặc mật khẩu!" });
 
         // Tạo token
@@ -38,7 +44,7 @@ exports.login = async (req, res) => {
 
 // 2. Tạo tài khoản Staff (Chỉ Admin dùng)
 exports.createStaff = async (req, res) => {
-    const { username, password, full_name } = req.body;
+    const { username, email, password, full_name } = req.body;
     try {
         // Kiểm tra username đã tồn tại chưa
         const [exists] = await promisePool.query("SELECT id FROM users WHERE username = ?", [username]);
@@ -49,8 +55,8 @@ exports.createStaff = async (req, res) => {
 
         // Lưu vào DB
         await promisePool.query(
-            "INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, 'staff')",
-            [username, hashedPassword, full_name]
+            "INSERT INTO users (username, email, password, full_name, role) VALUES (?, ?, ?, ?, 'staff')",
+            [username, email, hashedPassword, full_name]
         );
 
         res.status(201).json({ message: "Tạo tài khoản Staff thành công!" });
@@ -76,8 +82,8 @@ exports.register = async (req, res) => {
         const fullName = username; // Default full name
 
         await promisePool.query(
-            "INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)",
-            [username, hashedPassword, fullName, role]
+            "INSERT INTO users (username, email, password, full_name, role) VALUES (?, ?, ?, ?, ?)",
+            [username, email, hashedPassword, fullName, role]
         );
 
         res.status(201).json({ message: "Đăng ký thành công! Vui lòng đăng nhập." });

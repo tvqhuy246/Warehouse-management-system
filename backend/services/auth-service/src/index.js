@@ -7,13 +7,17 @@ const authRoutes = require('./routes/authRoutes');
 app.use(express.json());
 
 // Khởi tạo Database (Tạo bảng + Admin mặc định)
-initDatabase();
+// Khởi tạo Database và Start Server
+(async () => {
+    await initDatabase();
 
-// Định tuyến
-app.use('/', authRoutes); // Nginx đã cắt bớt /api/auth rồi, nên ở đây chỉ cần /
+    // Định tuyến
+    app.use('/', authRoutes);
 
-// QUAN TRỌNG: Phải lắng nghe ở port 8081 như cấu hình Nginx đã quy định
-const PORT = 8081;
-app.listen(PORT, () => {
-    console.log(`Auth Service đang chạy tại port ${PORT}`);
-});
+    // Chỉ start server khi DB đã sẵn sàng
+    // QUAN TRỌNG: Phải lắng nghe ở port 8081 như cấu hình Nginx đã quy định
+    const PORT = 8081;
+    app.listen(PORT, () => {
+        console.log(`Auth Service đang chạy tại port ${PORT}`);
+    });
+})();

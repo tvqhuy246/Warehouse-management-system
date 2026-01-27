@@ -19,34 +19,43 @@ const promisePool = pool.promise();
 
 // Hàm khởi tạo Database
 const initDatabase = async () => {
-    try {
-        // 1. Tạo bảng users nếu chưa có
-        const createTableQuery = `
-            CREATE TABLE IF NOT EXISTS users (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                username VARCHAR(50) NOT NULL UNIQUE,
-                password VARCHAR(255) NOT NULL,
-                full_name VARCHAR(100),
-                role ENUM('admin', 'staff') NOT NULL DEFAULT 'staff',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `;
-        await promisePool.query(createTableQuery);
-        console.log("✅ Đã kiểm tra/tạo bảng 'users'.");
+    let retries = 10;
+    while (retries > 0) {
+        try {
+            // 1. Tạo bảng users nếu chưa có
+            const createTableQuery = `
+                CREATE TABLE IF NOT EXISTS users (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    username VARCHAR(50) NOT NULL UNIQUE,
+                    email VARCHAR(100) UNIQUE,
+                    password VARCHAR(255) NOT NULL,
+                    full_name VARCHAR(100),
+                    role ENUM('admin', 'staff') NOT NULL DEFAULT 'staff',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            `;
+            await promisePool.query(createTableQuery);
+            console.log("✅ Đã kiểm tra/tạo bảng 'users'.");
 
-        // 2. Tạo tài khoản Admin mặc định (nếu chưa có)
-        const [rows] = await promisePool.query("SELECT * FROM users WHERE role = 'admin'");
-        if (rows.length === 0) {
-            const hashedPassword = await bcrypt.hash('xaydunghethong09', 10);
-            await promisePool.query(
-                "INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)",
-                ['qhuyadmin', hashedPassword, 'Administrator', 'admin']
-            );
-            console.log("🚀 Đã tạo tài khoản Admin mặc định: qhuyadmin / xaydunghethong09");
+            // 2. Tạo tài khoản Admin mặc định (nếu chưa có)
+            const [rows] = await promisePool.query("SELECT * FROM users WHERE role = 'admin'");
+            if (rows.length === 0) {
+                const hashedPassword = await bcrypt.hash('xaydunghethong09', 10);
+                await promisePool.query(
+                    "INSERT INTO users (username, email, password, full_name, role) VALUES (?, ?, ?, ?, ?)",
+                    ['qhuyadmin', 'admin@wms.com', hashedPassword, 'Administrator', 'admin']
+                );
+                console.log("🚀 Đã tạo tài khoản Admin mặc định: qhuyadmin / xaydunghethong09");
+            }
+            return; // Success, exit
+        } catch (error) {
+            console.error(`❌ Lỗi kết nối Database (còn lại ${retries} lần thử):`, error.message);
+            retries -= 1;
+            await new Promise(res => setTimeout(res, 3000)); // Wait 3s
         }
-    } catch (error) {
-        console.error("❌ Lỗi khởi tạo Database:", error);
     }
+    console.error("❌ Không thể kết nối Database sau nhiều lần thử. Exit.");
+    process.exit(1);
 };
 
 module.exports = { promisePool, initDatabase };
