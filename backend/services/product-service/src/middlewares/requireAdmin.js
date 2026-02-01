@@ -1,7 +1,24 @@
+const jwt = require("jsonwebtoken");
+
 module.exports = (req, res, next) => {
-  const role = req.headers["x-role"];
-  if (role !== "admin") {
-    return res.status(403).json({ message: "Admin only" });
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Check role (flexible case)
+    const role = decoded.role ? decoded.role.toLowerCase() : "";
+    if (role !== "admin") {
+      return res.status(403).json({ message: "Admin only" });
+    }
+
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid token" });
   }
-  next();
 };

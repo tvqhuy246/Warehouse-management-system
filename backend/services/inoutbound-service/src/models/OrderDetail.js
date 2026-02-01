@@ -16,7 +16,7 @@ const OrderDetail = sequelize.define('OrderDetail', {
         }
     },
     product_id: {
-        type: DataTypes.STRING,
+        type: DataTypes.STRING(50),
         allowNull: false
     },
     quantity: {

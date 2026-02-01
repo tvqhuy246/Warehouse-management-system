@@ -127,16 +127,47 @@ class NhapKhoController {
                 created_by
             }, { transaction });
 
+            // Fetch Products for tax calculation
+            const allProducts = await productApi.getAllProducts();
+            const productMap = {};
+            allProducts.forEach(p => productMap[p.id] = p);
+
             let total_amount = 0;
             const orderDetails = details.map(item => {
-                total_amount += Number(item.quantity) * Number(item.price);
+                const product = productMap[item.product_id];
+                const taxRate = (product && product.category) ? Number(product.category.tax_rate || 0) : 0;
+
+                // Parse inputs
+                const quantity = Number(item.quantity) || 0;
+                const price_before_tax = Number(item.price) || 0;
+                const procurement_costs = Number(item.procurement_costs) || 0;
+                const deductions = Number(item.deductions) || 0;
+
+                // Calculate Tax
+                const tax_amount = (price_before_tax * quantity) * (taxRate / 100);
+
+                // Calculate Total Inbound Value for this item line
+                // Formular: (Price * Qty) + Procurement - Deductions + Tax
+                const line_total_value = (price_before_tax * quantity) + procurement_costs - deductions + tax_amount;
+
+                // Calculate Effective Unit Cost (Giá vốn đơn vị thực tế)
+                const effective_unit_cost = quantity > 0 ? (line_total_value / quantity) : 0;
+
+                total_amount += line_total_value;
+
                 return {
                     order_id: order.id,
                     product_id: item.product_id,
-                    quantity: item.quantity,
-                    price: item.price,
-                    actual_quantity: item.quantity, // Mặc định khớp
-                    location_code: item.location_code || null
+                    quantity: quantity,
+                    price: price_before_tax, // Store original invoice price
+                    procurement_costs,
+                    deductions,
+                    tax_amount,
+                    actual_quantity: quantity,
+                    location_code: item.location_code || null,
+                    // We need to pass effective_unit_cost to Inventory Service, but not store in OrderDetail (unless we add a new column, but "price" is usually unit price)
+                    // Let's attach it to the object transiently for the inventory call
+                    _effective_unit_cost: effective_unit_cost
                 };
             });
 
@@ -154,11 +185,32 @@ class NhapKhoController {
                 await inventoryApi.updateStock({
                     order_id: order.id,
                     type: 'IN',
-                    items: details,
+                    // Pass formatted items with effective price
+                    items: orderDetails.map(d => ({
+                        product_id: d.product_id,
+                        quantity: d.quantity,
+                        location_code: d.location_code,
+                        price: d._effective_unit_cost // Sent to Inventory Service for Weighted Average Calc
+                    })),
                     performed_by: order.created_by
                 });
             } catch (invError) {
                 console.error('Inventory Sync Error:', invError.message);
+            }
+
+            // Update product prices based on weighted average cost
+            console.log('Updating product prices...');
+            for (const detail of orderDetails) {
+                try {
+                    await productApi.updateProductPrice(detail.product_id, {
+                        new_cost: detail._effective_unit_cost,
+                        quantity: detail.quantity
+                    });
+                    console.log(`Updated price for product ${detail.product_id}: ${detail._effective_unit_cost}`);
+                } catch (priceError) {
+                    console.error(`Failed to update price for product ${detail.product_id}:`, priceError.message);
+                    // Don't fail the whole transaction if price update fails
+                }
             }
 
             const result = await Order.findByPk(order.id, {
@@ -185,6 +237,10 @@ class NhapKhoController {
                 whereClause.created_at = {};
                 if (from) whereClause.created_at[Op.gte] = new Date(from);
                 if (to) whereClause.created_at[Op.lte] = new Date(new Date(to).setHours(23, 59, 59, 999));
+            }
+
+            if (req.query.created_by) {
+                whereClause.created_by = req.query.created_by;
             }
 
             const orders = await Order.findAll({

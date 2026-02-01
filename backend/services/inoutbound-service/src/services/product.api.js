@@ -16,6 +16,22 @@ const productApi = {
             console.error('Error fetching products from Product Service:', error.message);
             return [];
         }
+    },
+
+    /**
+     * Update product price based on new inbound cost
+     * @param {string} productId - Product UUID
+     * @param {object} data - { new_cost, quantity }
+     * @returns {Promise<object>} Updated product
+     */
+    updateProductPrice: async (productId, data) => {
+        try {
+            const response = await axios.patch(`${PRODUCT_SERVICE_URL}/products/${productId}/cost`, data);
+            return response.data;
+        } catch (error) {
+            console.error('Error updating product price:', error.message);
+            throw error;
+        }
     }
 };
 

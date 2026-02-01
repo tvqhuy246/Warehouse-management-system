@@ -49,3 +49,22 @@ exports.getLocationByCode = async (location_code) => {
         return null;
     }
 };
+
+exports.getAllLocations = async () => {
+    try {
+        const { data } = await productClient.get('/locations/');
+        return data;
+    } catch (error) {
+        console.error('Location Service Error (getAll):', error.message);
+        return [];
+    }
+};
+exports.updateProductCost = async (id, average_cost) => {
+    try {
+        const { data } = await productClient.patch(`/products/${id}/cost`, { average_cost });
+        return data;
+    } catch (error) {
+        console.error('Product Cost Update Error:', error.message);
+        throw error;
+    }
+};

@@ -82,46 +82,45 @@ const InboundPage = () => {
     };
 
     const addItem = () => {
-        setSelectedItems([...selectedItems, { product_id: '', quantity: 1, price: 0, batch_number: '', location_code: '' }]);
+        setSelectedItems([...selectedItems, { product_id: '', quantity: 1, price: 0, deductions: 0, batch_number: '', location_code: '' }]);
     };
 
     const getSelectedProduct = (productId) => {
-        return products.find(p => p.id === productId);
+        return products.find(p => String(p.id) === String(productId));
     };
 
     const updateItem = (index, field, value) => {
         const updated = [...selectedItems];
         updated[index][field] = value;
 
-        // Auto-calculate PRICE (Total Amount) based on category margin and quantity
-        const product = updated[index].product_id ? getSelectedProduct(updated[index].product_id) : null;
+        // Auto-calculate deductions (non-refundable tax) when product, quantity, or price changes
+        if (field === 'product_id' || field === 'quantity' || field === 'price') {
+            const product = field === 'product_id' ? getSelectedProduct(value) : getSelectedProduct(updated[index].product_id);
 
-        if (product && (product.price !== undefined || product.price !== null)) {
-            const quantity = field === 'quantity'
-                ? parseFloat(value) || 0 // Default to 0 if NaN
-                : parseFloat(updated[index].quantity) || 0;
+            if (product && product.category) {
+                const quantity = field === 'quantity' ? (parseFloat(value) || 0) : (parseFloat(updated[index].quantity) || 0);
+                const price = field === 'price' ? (parseFloat(value) || 0) : (parseFloat(updated[index].price) || 0);
+                const taxRate = Number(product.category.tax_rate) || 0;
 
-            // Recalculate if product changes OR quantity changes OR price is manually edited? 
-            // Logic: If product or quantity changes, auto-update price. 
-            if (field === 'product_id' || field === 'quantity') {
-                // Use category inbound_margin or default to -5%
-                const margin = (product.category && product.category.inbound_margin) ? product.category.inbound_margin : -5;
-                const basePrice = Number(product.price);
-                const unitPrice = basePrice * (1 + margin / 100);
-                const totalAmount = unitPrice * quantity;
-                updated[index].price = Math.round(totalAmount);
+                // Calculate deductions based on tax_rate (non-refundable VAT)
+                // Deduction = (price * quantity) * (tax_rate / 100)
+                const deductionAmount = (price * quantity) * (taxRate / 100);
+                updated[index].deductions = Math.round(deductionAmount);
+            } else {
+                updated[index].deductions = 0;
             }
-        } else if (field === 'product_id') {
-            updated[index].price = 0;
         }
 
         // Auto-populate location if product selected and has default location
-        if (field === 'product_id' && product?.location) {
-            updated[index].warehouse = product.location.warehouse;
-            updated[index].zone = product.location.zone;
-            updated[index].aisle = product.location.aisle;
-            updated[index].shelf = product.location.shelf;
-            updated[index].location_code = product.location.location_code;
+        if (field === 'product_id') {
+            const product = getSelectedProduct(value);
+            if (product?.location) {
+                updated[index].warehouse = product.location.warehouse;
+                updated[index].zone = product.location.zone;
+                updated[index].aisle = product.location.aisle;
+                updated[index].shelf = product.location.shelf;
+                updated[index].location_code = product.location.location_code;
+            }
         }
 
         setSelectedItems(updated);
@@ -130,18 +129,7 @@ const InboundPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            // Convert Total Price back to Unit Price for backend
-            const detailsToSend = selectedItems.map(item => {
-                const quantity = parseFloat(item.quantity) || 1;
-                const totalPrice = parseFloat(item.price) || 0;
-                const unitPrice = quantity > 0 ? totalPrice / quantity : 0;
-                return {
-                    ...item,
-                    price: unitPrice
-                };
-            });
-
-            await inventoryService.createInbound({ ...newOrder, details: detailsToSend });
+            await inventoryService.createInbound({ ...newOrder, details: selectedItems });
             alert('Tạo phiếu nhập thành công!');
             setShowModal(false);
             setSelectedItems([]);
@@ -262,7 +250,7 @@ const InboundPage = () => {
 
             {showModal && (
                 <div className="modal-overlay">
-                    <div className="modal-content card" style={{ maxWidth: '800px' }}>
+                    <div className="modal-content card" style={{ maxWidth: '1200px', width: '95%' }}>
                         <h2>Tạo Phiếu Nhập Kho</h2>
                         <form onSubmit={handleSubmit}>
                             <div className="form-row">
@@ -281,6 +269,17 @@ const InboundPage = () => {
 
                             <h3>Chi tiết hàng hóa</h3>
                             <div className="items-list">
+                                <div className="item-header">
+                                    <div style={{ flex: '2', marginRight: '0.5rem' }}>Sản phẩm</div>
+                                    <div style={{ flex: '1.5', marginRight: '0.5rem' }}>Vị trí kho</div>
+                                    <div style={{ width: '70px', marginRight: '0.5rem' }}>SL</div>
+                                    <div style={{ width: '100px', marginRight: '0.5rem' }}>Đơn giá</div>
+                                    <div style={{ width: '110px', marginRight: '0.5rem' }}>Thành tiền</div>
+                                    <div style={{ width: '120px', marginRight: '0.5rem' }}>Danh mục</div>
+                                    <div style={{ width: '90px', marginRight: '0.5rem' }}>Giảm trừ</div>
+                                    <div style={{ width: '70px', marginRight: '0.5rem' }}>Lô</div>
+                                    <div style={{ width: '32px' }}></div>
+                                </div>
                                 {selectedItems.map((item, idx) => {
                                     const selectedProduct = getSelectedProduct(item.product_id);
                                     return (
@@ -341,27 +340,54 @@ const InboundPage = () => {
                                                     placeholder="SL"
                                                     value={item.quantity}
                                                     onChange={e => updateItem(idx, 'quantity', e.target.value)}
-                                                    style={{ width: '80px' }}
+                                                    style={{ width: '70px' }}
                                                     min="1"
                                                     required
                                                 />
                                                 <input
                                                     type="number"
-                                                    placeholder="Thành tiền"
+                                                    placeholder="Đơn giá"
                                                     value={item.price}
                                                     onChange={e => updateItem(idx, 'price', e.target.value)}
-                                                    style={{ width: '120px' }}
+                                                    style={{ width: '100px' }}
                                                     min="0"
                                                     required
+                                                    title="Đơn giá mua từ nhà cung cấp (đơn vị: VNĐ)"
+                                                />
+                                                <input
+                                                    type="number"
+                                                    placeholder="Thành tiền"
+                                                    value={(parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0)}
                                                     readOnly
-                                                    title="Thành tiền = Đơn giá * SL * (Category Margin). Được tính tự động."
+                                                    style={{ width: '110px', background: '#f0f0f0' }}
+                                                    title="Thành tiền = Đơn giá × Số lượng (tự động tính)"
+                                                />
+                                                <div style={{ width: '120px', display: 'flex', alignItems: 'center' }}>
+                                                    {selectedProduct?.category ? (
+                                                        <span className="category-badge" title={`Thuế suất: ${selectedProduct.category.tax_rate}%`}>
+                                                            {selectedProduct.category.name}
+                                                            <small style={{ marginLeft: '4px', opacity: 0.8 }}>
+                                                                (Thuế {selectedProduct.category.tax_rate}%)
+                                                            </small>
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Chưa có</span>
+                                                    )}
+                                                </div>
+                                                <input
+                                                    type="number"
+                                                    placeholder="Giảm trừ"
+                                                    value={item.deductions}
+                                                    readOnly
+                                                    style={{ width: '90px', background: '#f0f0f0' }}
+                                                    title="Thuế không hoàn lại = (Đơn giá × SL) × Thuế suất (tự động tính từ danh mục)"
                                                 />
                                                 <input
                                                     type="text"
                                                     placeholder="Lô"
                                                     value={item.batch_number}
                                                     onChange={e => updateItem(idx, 'batch_number', e.target.value)}
-                                                    style={{ width: '80px' }}
+                                                    style={{ width: '70px' }}
                                                 />
                                                 {/* Removed old individual inputs for Warehouse/Zone/Aisle/Shelf */}
                                                 <button
@@ -412,7 +438,7 @@ const InboundPage = () => {
 
             {detailModal && selectedOrder && (
                 <div className="modal-overlay">
-                    <div className="modal-content card" style={{ maxWidth: '800px' }}>
+                    <div className="modal-content card" style={{ maxWidth: '1000px', width: '90%' }}>
                         <div className="flex justify-between items-center mb-4">
                             <h2>Chi tiết Phiếu Nhập: {selectedOrder.order_code}</h2>
                             <span className={`badge badge-success`}>{selectedOrder.status}</span>
@@ -474,6 +500,18 @@ const InboundPage = () => {
             )}
 
             <style>{`
+                .item-header {
+                    display: flex;
+                    gap: 0.5rem;
+                    align-items: center;
+                    padding: 0.75rem 1rem;
+                    background: #1e293b;
+                    border-radius: 6px;
+                    margin-bottom: 1rem;
+                    font-weight: 600;
+                    font-size: 0.875rem;
+                    color: #e2e8f0;
+                }
                 .form-row { display: flex; gap: 1rem; }
                 .flex-1 { flex: 1; }
                 .item-row-container { margin-bottom: 1rem; padding: 1rem; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; }
@@ -544,6 +582,17 @@ const InboundPage = () => {
                 }
                 .btn-remove:hover {
                     background: #fca5a5;
+                }
+                .category-badge {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 0.35rem 0.6rem;
+                    border-radius: 6px;
+                    font-size: 0.7rem;
+                    font-weight: 600;
+                    display: inline-block;
+                    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+                    white-space: nowrap;
                 }
                 .badge-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
                 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(2px); }

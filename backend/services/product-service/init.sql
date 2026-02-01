@@ -3,8 +3,10 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE TABLE IF NOT EXISTS categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL UNIQUE,
+  description TEXT,
   inbound_margin DECIMAL(5, 2) DEFAULT -5.00,
-  outbound_margin DECIMAL(5, 2) DEFAULT 10.00
+  outbound_margin DECIMAL(5, 2) DEFAULT 10.00,
+  tax_rate DECIMAL(5, 2) DEFAULT 10.00
 );
 
 CREATE TABLE IF NOT EXISTS warehouse_locations (
@@ -26,6 +28,7 @@ CREATE TABLE IF NOT EXISTS products (
   sku VARCHAR(50) NOT NULL UNIQUE,
   name VARCHAR(255) NOT NULL,
   price NUMERIC CHECK (price > 0),
+  average_cost NUMERIC DEFAULT 0,
   unit VARCHAR(50) DEFAULT 'Cái',
   min_stock NUMERIC DEFAULT 0,
   status VARCHAR(20) DEFAULT 'ACTIVE',

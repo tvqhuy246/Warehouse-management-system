@@ -4,7 +4,7 @@ const { sequelize } = require('../config/database');
 // Model Sản phẩm
 const Product = sequelize.define('Product', {
     id: {
-        type: DataTypes.STRING,
+        type: DataTypes.STRING(50),
         primaryKey: true,
         // autoIncrement: true // Removed for UUID
     },

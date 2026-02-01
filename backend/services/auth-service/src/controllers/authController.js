@@ -65,6 +65,16 @@ exports.createStaff = async (req, res) => {
     }
 };
 
+// 4. Lấy danh sách users (Admin & Staff)
+exports.getAllUsers = async (req, res) => {
+    try {
+        const [users] = await promisePool.query("SELECT id, username, full_name, role, email, created_at FROM users");
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: "Lỗi server", error });
+    }
+};
+
 // 3. Đăng ký tài khoản (Public)
 exports.register = async (req, res) => {
     const { username, password, email } = req.body; // email is optional/extra

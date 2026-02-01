@@ -11,8 +11,8 @@ const CategoryPage = () => {
     const [formData, setFormData] = useState({
         name: '',
         description: '',
-        inbound_margin: 0,
-        outbound_margin: 0
+        vat_rate: 10,
+        profit_margin: 15
     });
     const navigate = useNavigate();
 
@@ -60,8 +60,8 @@ const CategoryPage = () => {
         setFormData({
             name: category.name,
             description: category.description || '',
-            inbound_margin: category.inbound_margin,
-            outbound_margin: category.outbound_margin
+            vat_rate: category.vat_rate || 10,
+            profit_margin: category.profit_margin || 15
         });
         setShowModal(true);
     };
@@ -79,7 +79,7 @@ const CategoryPage = () => {
     };
 
     const resetForm = () => {
-        setFormData({ name: '', description: '', inbound_margin: 0, outbound_margin: 0 });
+        setFormData({ name: '', description: '', vat_rate: 10, profit_margin: 15 });
         setEditingCategory(null);
     };
 
@@ -100,8 +100,8 @@ const CategoryPage = () => {
                         <tr>
                             <th>Tên danh mục</th>
                             <th>Mô tả</th>
-                            <th>Tỉ giá nhập (%)</th>
-                            <th>Tỉ giá xuất (%)</th>
+                            <th>Thuế VAT (%)</th>
+                            <th>Lợi nhuận (%)</th>
                             <th>Hành động</th>
                         </tr>
                     </thead>
@@ -111,14 +111,10 @@ const CategoryPage = () => {
                                 <td><strong>{cat.name}</strong></td>
                                 <td>{cat.description}</td>
                                 <td>
-                                    <span className={cat.inbound_margin < 0 ? 'margin-negative' : 'margin-positive'}>
-                                        {cat.inbound_margin > 0 ? '+' : ''}{cat.inbound_margin}%
-                                    </span>
+                                    <span className="vat-badge">{cat.vat_rate}%</span>
                                 </td>
                                 <td>
-                                    <span className={cat.outbound_margin < 0 ? 'margin-negative' : 'margin-positive'}>
-                                        {cat.outbound_margin > 0 ? '+' : ''}{cat.outbound_margin}%
-                                    </span>
+                                    <span className="profit-badge">+{cat.profit_margin}%</span>
                                 </td>
                                 <td>
                                     <button className="btn-edit" onClick={() => handleEdit(cat)}>Sửa</button>
@@ -158,37 +154,37 @@ const CategoryPage = () => {
 
                             <div className="form-row">
                                 <div className="form-group flex-1">
-                                    <label>Tỉ giá nhập (%) *</label>
+                                    <label>Thuế VAT (%) *</label>
                                     <input
                                         type="number"
                                         step="0.1"
                                         required
-                                        value={formData.inbound_margin}
-                                        onChange={e => setFormData({ ...formData, inbound_margin: parseFloat(e.target.value) })}
-                                        placeholder="-5 (giảm 5%)"
+                                        value={formData.vat_rate}
+                                        onChange={e => setFormData({ ...formData, vat_rate: parseFloat(e.target.value) })}
+                                        placeholder="10"
                                     />
-                                    <small>Âm = giảm giá, Dương = tăng giá</small>
+                                    <small>Thường là 10%, 8%, 5%, hoặc 0%</small>
                                 </div>
 
                                 <div className="form-group flex-1">
-                                    <label>Tỉ giá xuất (%) *</label>
+                                    <label>Lợi nhuận mong muốn (%) *</label>
                                     <input
                                         type="number"
                                         step="0.1"
                                         required
-                                        value={formData.outbound_margin}
-                                        onChange={e => setFormData({ ...formData, outbound_margin: parseFloat(e.target.value) })}
-                                        placeholder="5 (tăng 5%)"
+                                        value={formData.profit_margin}
+                                        onChange={e => setFormData({ ...formData, profit_margin: parseFloat(e.target.value) })}
+                                        placeholder="15"
                                     />
-                                    <small>Âm = giảm giá, Dương = tăng giá</small>
+                                    <small>VD: 15% = bán giá cao hơn vốn 15%</small>
                                 </div>
                             </div>
 
                             <div className="pricing-example">
                                 <h4>Ví dụ tính giá:</h4>
-                                <p>Giá gốc: 1,000,000đ</p>
-                                <p>→ Giá nhập: {(1000000 * (1 + formData.inbound_margin / 100)).toLocaleString()}đ</p>
-                                <p>→ Giá xuất: {(1000000 * (1 + formData.outbound_margin / 100)).toLocaleString()}đ</p>
+                                <p>Giá vốn: 100,000đ</p>
+                                <p>→ Giá bán (+ lợi nhuận {formData.profit_margin}%): {(100000 * (1 + formData.profit_margin / 100)).toLocaleString()}đ</p>
+                                <p>→ Giá cuối (+ VAT {formData.vat_rate}%): {(100000 * (1 + formData.profit_margin / 100) * (1 + formData.vat_rate / 100)).toLocaleString()}đ</p>
                             </div>
 
                             <div className="modal-actions">

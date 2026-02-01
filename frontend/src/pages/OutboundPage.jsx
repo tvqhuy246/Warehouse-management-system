@@ -76,7 +76,7 @@ const OutboundPage = () => {
     };
 
     const getSelectedProduct = (productId) => {
-        return products.find(p => p.id === productId); // ID is UUID now
+        return products.find(p => String(p.id) === String(productId));
     };
 
     const updateItem = async (index, field, value) => {
@@ -90,11 +90,17 @@ const OutboundPage = () => {
                 : getSelectedProduct(updated[index].product_id);
 
             if (product && product.price) {
-                const quantity = field === 'quantity' ? parseFloat(value) || 1 : parseFloat(updated[index].quantity) || 1;
-                // Use category outbound_margin or default to +5%
-                const margin = product.category?.outbound_margin || 5;
-                const adjustedPrice = product.price * (1 + margin / 100);
-                updated[index].price = Math.round(adjustedPrice);
+                // Calculate selling price with profit margin and VAT
+                const profitMargin = product.category?.profit_margin || 15;
+                const vatRate = product.category?.vat_rate || 10;
+
+                // Price before VAT = cost * (1 + profit margin)
+                const priceBeforeVAT = product.price * (1 + profitMargin / 100);
+
+                // Final price = price before VAT * (1 + VAT)
+                const finalPrice = priceBeforeVAT * (1 + vatRate / 100);
+
+                updated[index].price = Math.round(finalPrice);
             } else if (field === 'product_id') {
                 updated[index].price = 0;
             }
@@ -246,7 +252,7 @@ const OutboundPage = () => {
 
             {showModal && (
                 <div className="modal-overlay">
-                    <div className="modal-content card" style={{ maxWidth: '900px' }}>
+                    <div className="modal-content card" style={{ maxWidth: '1200px', width: '95%' }}>
                         <h2>Tạo Phiếu Xuất Kho</h2>
                         <form onSubmit={handleSubmit}>
                             <div className="form-row">
@@ -379,7 +385,7 @@ const OutboundPage = () => {
 
             {detailModal && selectedOrder && (
                 <div className="modal-overlay">
-                    <div className="modal-content card" style={{ maxWidth: '800px' }}>
+                    <div className="modal-content card" style={{ maxWidth: '1000px', width: '90%' }}>
                         <div className="flex justify-between items-center mb-4">
                             <h2>Chi tiết Phiếu Xuất: {selectedOrder.order_code}</h2>
                             <span className={`badge badge-success`}>{selectedOrder.status}</span>

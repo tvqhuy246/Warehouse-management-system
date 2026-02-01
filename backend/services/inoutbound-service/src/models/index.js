@@ -13,7 +13,8 @@ Order.hasMany(OrderDetail, { foreignKey: 'order_id', as: 'details' });
 OrderDetail.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
 
 // Link OrderDetail to Product (local cache for quick lookups)
-OrderDetail.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+// Link OrderDetail to Product (local cache for quick lookups)
+// OrderDetail.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
 
 const { sequelize } = require('../config/database');
 

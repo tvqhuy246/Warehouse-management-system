@@ -14,23 +14,23 @@ exports.getById = async (id) => {
 
 // Create category
 exports.create = async (data) => {
-    const { name, description, inbound_margin, outbound_margin } = data;
+    const { name, description, vat_rate, profit_margin } = data;
     const result = await pool.query(
-        `INSERT INTO categories(name, description, inbound_margin, outbound_margin)
+        `INSERT INTO categories(name, description, vat_rate, profit_margin)
      VALUES ($1, $2, $3, $4) RETURNING *`,
-        [name, description, inbound_margin || 0, outbound_margin || 0]
+        [name, description, vat_rate || 10, profit_margin || 15]
     );
     return result.rows[0];
 };
 
 // Update category
 exports.update = async (id, data) => {
-    const { name, description, inbound_margin, outbound_margin } = data;
+    const { name, description, vat_rate, profit_margin } = data;
     const result = await pool.query(
         `UPDATE categories 
-     SET name=$1, description=$2, inbound_margin=$3, outbound_margin=$4 
+     SET name=$1, description=$2, vat_rate=$3, profit_margin=$4 
      WHERE id=$5 RETURNING *`,
-        [name, description, inbound_margin, outbound_margin, id]
+        [name, description, vat_rate, profit_margin, id]
     );
     return result.rows[0];
 };

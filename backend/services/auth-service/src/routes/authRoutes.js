@@ -17,4 +17,7 @@ router.get('/me', verifyToken, (req, res) => {
     res.json({ message: "Token hợp lệ!", user: req.user });
 });
 
+// Lấy danh sách users
+router.get('/users', verifyToken, isAdmin, authController.getAllUsers);
+
 module.exports = router;

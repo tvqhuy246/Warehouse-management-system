@@ -13,6 +13,10 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init-mysql.sql:/docker-entrypoint-initdb.d/init-mysql.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   # Postgres for Product Service
   postgres-db:
@@ -26,6 +30,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # 1. Auth Service
   auth-service:
@@ -41,7 +50,8 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      - mysql-db
+      mysql-db:
+        condition: service_healthy
 
   # 2. Product Service
   product-service:
@@ -54,10 +64,12 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgrespw
       DB_NAME: product_db
+      JWT_SECRET: supersecretkey
     ports:
       - "8082:8082"
     depends_on:
-      - postgres-db
+      postgres-db:
+        condition: service_healthy
 
   # 3. In/Out Bound Service
   inoutbound-service:
@@ -71,10 +83,12 @@ services:
       DB_PASSWORD: rootpassword
       DB_NAME: inoutbound_db
       DB_DIALECT: mysql
+      JWT_SECRET: supersecretkey
     ports:
       - "3000:3000"
     depends_on:
-      - mysql-db
+      mysql-db:
+        condition: service_healthy
 
   # 4. Inventory Service (Reports)
   inventory-service:
@@ -88,8 +102,12 @@ services:
       DB_USER: root
       DB_PASSWORD: rootpassword
       DB_NAME: inventory_db
+      JWT_SECRET: supersecretkey
     ports:
       - "8083:8083"
+    depends_on:
+      mysql-db:
+        condition: service_healthy
 
   # Gateway (Nginx)
   gateway:

@@ -20,13 +20,13 @@ const ReceiptItem = sequelize.define('ReceiptItem', {
         comment: 'ID phiếu'
     },
     product_id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.STRING(50),
         allowNull: false,
-        comment: 'ID sản phẩm',
-        references: {
-            model: 'products',
-            key: 'id'
-        }
+        comment: 'ID sản phẩm (UUID từ Product Service)',
+        // references: {
+        //     model: 'products',
+        //     key: 'id'
+        // }
     },
     so_luong: {
         type: DataTypes.DECIMAL(15, 2),
@@ -37,6 +37,24 @@ const ReceiptItem = sequelize.define('ReceiptItem', {
         type: DataTypes.DECIMAL(15, 2),
         allowNull: true,
         comment: 'Đơn giá'
+    },
+    procurement_costs: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: true,
+        defaultValue: 0,
+        comment: 'Chi phí thu mua'
+    },
+    deductions: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: true,
+        defaultValue: 0,
+        comment: 'Các khoản giảm trừ'
+    },
+    tax_amount: {
+        type: DataTypes.DECIMAL(15, 2),
+        allowNull: true,
+        defaultValue: 0,
+        comment: 'Thuế không hoàn lại'
     },
     ghi_chu: {
         type: DataTypes.TEXT,

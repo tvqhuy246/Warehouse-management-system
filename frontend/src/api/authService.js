@@ -13,6 +13,9 @@ const authService = {
     getCurrentUser: () => {
         // Example if there's a /me endpoint or just decode token
         return axiosClient.get('/api/auth/me'); // Adjust based on actual API
+    },
+    getAllUsers: () => {
+        return axiosClient.get('/api/auth/users');
     }
 };
 

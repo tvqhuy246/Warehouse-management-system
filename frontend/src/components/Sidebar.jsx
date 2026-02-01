@@ -52,8 +52,8 @@ const Sidebar = () => {
                         <Link to="/partners" className={`menu-item ${isActive('/partners')}`}>
                             <span className="icon">🤝</span> Đối tác
                         </Link>
-                        <Link to="/create-staff" className={`menu-item ${isActive('/create-staff')}`}>
-                            <span className="icon">👤</span> Nhân viên
+                        <Link to="/hr" className={`menu-item ${isActive('/hr') || isActive('/create-staff')}`}>
+                            <span className="icon">👤</span> Quản lý nhân sự
                         </Link>
                     </>
                 )}

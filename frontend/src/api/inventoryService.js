@@ -62,6 +62,9 @@ const inventoryService = {
     // Check capacity
     checkCapacity: (locationCode) => {
         return axiosClient.get('/api/inventory/check-capacity', { params: { location_code: locationCode } });
+    },
+    getLocationCapacity: () => {
+        return axiosClient.get('/api/inventory/location-capacity');
     }
 };
 

@@ -26,14 +26,22 @@ const sequelize = new Sequelize(
 );
 
 // Kiểm tra kết nối
+// Kiểm tra kết nối với retry logic
 const testConnection = async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('✓ Kết nối database thành công!');
-  } catch (error) {
-    console.error('✗ Không thể kết nối database:', error.message);
-    process.exit(1);
+  let retries = 10;
+  while (retries > 0) {
+    try {
+      await sequelize.authenticate();
+      console.log('✓ Kết nối database thành công!');
+      return;
+    } catch (error) {
+      console.error(`✗ Kết nối database thất bại (còn lại ${retries} lần):`, error.message);
+      retries -= 1;
+      await new Promise(res => setTimeout(res, 3000)); // Chờ 3s
+    }
   }
+  console.error('✗ Không thể kết nối database sau nhiều lần thử.');
+  process.exit(1);
 };
 
 module.exports = { sequelize, testConnection };

@@ -8,6 +8,7 @@ const { validateProduct } = require("../validators/product.schema");
 router.get("/", controller.getAll);
 router.post("/", requireAdmin, validateProduct, controller.create);
 router.put("/:id", requireAdmin, validateProduct, controller.update);
+router.patch("/:id/cost", controller.updateCost); // Internal route for inventory service
 router.delete("/:id", requireAdmin, controller.remove);
 
 module.exports = router;

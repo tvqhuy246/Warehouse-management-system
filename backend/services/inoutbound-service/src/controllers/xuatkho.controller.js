@@ -199,6 +199,10 @@ class XuatKhoController {
                 if (to) whereClause.created_at[Op.lte] = new Date(new Date(to).setHours(23, 59, 59, 999));
             }
 
+            if (req.query.created_by) {
+                whereClause.created_by = req.query.created_by;
+            }
+
             const orders = await Order.findAll({
                 where: whereClause,
                 include: [{ model: Partner, as: 'partner' }],

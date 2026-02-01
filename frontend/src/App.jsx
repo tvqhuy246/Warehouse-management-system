@@ -11,6 +11,7 @@ import ProductPage from './pages/ProductPage';
 import CategoryPage from './pages/CategoryPage';
 import LocationManagementPage from './pages/LocationManagementPage';
 import CreateStaffPage from './pages/CreateStaffPage';
+import HRPage from './pages/HRPage';
 
 import Sidebar from './components/Sidebar';
 
@@ -36,6 +37,7 @@ function App() {
                     <Route path="/categories" element={<ProtectedRoute requiredRole="admin"><CategoryPage /></ProtectedRoute>} />
                     <Route path="/locations" element={<ProtectedRoute requiredRole="admin"><LocationManagementPage /></ProtectedRoute>} />
                     <Route path="/create-staff" element={<ProtectedRoute requiredRole="admin"><CreateStaffPage /></ProtectedRoute>} />
+                    <Route path="/hr" element={<ProtectedRoute requiredRole="admin"><HRPage /></ProtectedRoute>} />
                   </Routes>
                 </ProtectedRoute>
               </main>

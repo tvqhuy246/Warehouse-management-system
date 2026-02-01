@@ -19,12 +19,20 @@ const sequelize = new Sequelize(
 );
 
 const testConnection = async () => {
-    try {
-        await sequelize.authenticate();
-        console.log('Inventory DB connected');
-    } catch (error) {
-        console.error('Inventory DB connection error:', error);
+    let retries = 10;
+    while (retries > 0) {
+        try {
+            await sequelize.authenticate();
+            console.log('✓ Inventory DB connected');
+            return;
+        } catch (error) {
+            console.error(`✗ Inventory DB connection failed (retries left: ${retries}):`, error.message);
+            retries -= 1;
+            await new Promise(res => setTimeout(res, 3000)); // Wait 3s
+        }
     }
+    console.error('✗ Failed to connect to Inventory DB after multiple attempts');
+    process.exit(1);
 };
 
 module.exports = { sequelize, testConnection };

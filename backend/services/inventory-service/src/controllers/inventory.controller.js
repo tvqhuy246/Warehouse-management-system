@@ -90,6 +90,14 @@ class InventoryController {
       next(error);
     }
   }
+  async getLocationCapacityReport(req, res, next) {
+    try {
+      const data = await inventoryService.getLocationCapacityReport();
+      res.json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new InventoryController();

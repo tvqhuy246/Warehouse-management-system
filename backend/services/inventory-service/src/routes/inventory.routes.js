@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const inventoryController = require('../controllers/inventory.controller');
 
+router.get('/ping', (req, res) => res.json({ msg: 'pong' }));
+
+// API Capacity Report
+router.get('/location-capacity', inventoryController.getLocationCapacityReport.bind(inventoryController));
+
 // API Cập nhật kho (In/Out)
 router.post('/update', inventoryController.update.bind(inventoryController));
 

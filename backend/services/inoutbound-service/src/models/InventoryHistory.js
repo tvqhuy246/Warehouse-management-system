@@ -10,9 +10,9 @@ const InventoryHistory = sequelize.define('InventoryHistory', {
         autoIncrement: true
     },
     product_id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.STRING(50),
         allowNull: false,
-        comment: 'ID sản phẩm',
+        comment: 'ID sản phẩm (UUID from Product Service)',
         references: {
             model: 'products',
             key: 'id'
