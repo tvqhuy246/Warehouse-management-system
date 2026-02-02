@@ -11,6 +11,11 @@ const pool = new Pool({
   database: process.env.DB_NAME,
 });
 
+pool.on("error", (err) => {
+  console.error("Unexpected error on idle client", err);
+  process.exit(-1);
+});
+
 const initDb = async (retries = 5) => {
   while (retries > 0) {
     try {
